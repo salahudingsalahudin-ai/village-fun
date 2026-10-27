@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Village Fun</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: a fixed photographic stage (WebGL) behind seven full-height stops.
+   Each stop has a dark glass story panel on one side and two loose snapshots on the other, mirrored every second stop. */
+:root{
+  --ink:#1a120c;
+  --cream:#fff4de;
+  --cream-dim:rgba(255,244,222,.78);
+  --gold:#f2b134;
+  --clay:#e07a4a;
+  --glass:rgba(22,15,10,.56);
+  --glass-line:rgba(255,236,200,.2);
+  --night:#0b0d1a;
+  --f-display:'Bricolage Grotesque','Trebuchet MS',sans-serif;
+  --f-body:'Figtree','Segoe UI',system-ui,sans-serif;
+  --gutter:max(16px,env(safe-area-inset-left,0px));
+}
+*{box-sizing:border-box}
+html{scroll-behavior:auto}
+body{margin:0;background:var(--night);color:var(--cream);font-family:var(--f-body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+#stage{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+body.no-webgl{background:#2a1c12 url(photos/s0.jpg) center/cover fixed}
+.fallback{display:none;position:fixed;inset:auto 16px 16px;z-index:5;background:var(--cream);color:var(--ink);padding:.7rem 1rem;border-radius:10px;font-size:.9rem}
+body.no-webgl .fallback{display:block}
+
+/* loader */
+.loader{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:var(--night);color:var(--cream);font-family:var(--f-display);transition:opacity .9s ease,visibility .9s}
+.loader.done{opacity:0;visibility:hidden}
+.loader div{text-align:center}
+.loader b{display:block;font-size:clamp(2.2rem,7vw,4rem);font-weight:800;letter-spacing:-.025em}
+.loader span{display:block;margin-top:.5rem;font-family:var(--f-body);font-size:.95rem;opacity:.7}
+.loader i{display:block;margin:1.1rem auto 0;width:10rem;height:3px;border-radius:3px;background:rgba(255,244,222,.18);overflow:hidden}
+.loader i::after{content:"";display:block;height:100%;width:40%;background:var(--gold);animation:ld 1.1s ease-in-out infinite}
+@keyframes ld{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+
+/* top bar */
+.top{position:fixed;z-index:30;inset:calc(12px + env(safe-area-inset-top,0px)) 0 auto 0;display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding-left:var(--gutter);padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none}
+.top>*{pointer-events:auto}
+.brand{display:flex;align-items:center;gap:.55rem;font-family:var(--f-display);font-weight:800;font-size:1.1rem;letter-spacing:-.01em;text-decoration:none;color:var(--cream);padding:.45rem .9rem .45rem .6rem;border-radius:999px;background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--glass-line)}
+.brand i{width:.8rem;height:.8rem;border-radius:50%;background:var(--gold);box-shadow:0 0 0 3px rgba(242,177,52,.25)}
+.tools{display:flex;gap:.5rem;align-items:center}
+.chip-btn{font:inherit;font-weight:700;font-size:.84rem;color:var(--cream);background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--glass-line);border-radius:999px;padding:.45rem .85rem;cursor:pointer;display:inline-flex;align-items:center;gap:.45rem;text-decoration:none}
+.chip-btn:hover{background:rgba(22,15,10,.74)}
+.chip-btn[aria-pressed="true"]{background:var(--gold);color:var(--ink);border-color:transparent}
+.clock{font-size:.74rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:.5rem .8rem;border-radius:999px;background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--glass-line);min-width:7.5rem;text-align:center}
+.cta{background:var(--gold);color:var(--ink);border-color:transparent}
+.cta:hover{background:#ffc450}
+button:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+/* rail */
+.rail{position:fixed;z-index:25;left:max(14px,env(safe-area-inset-left,0px));top:50%;transform:translateY(-50%);display:none;flex-direction:column;gap:.15rem}
+.rail button{all:unset;cursor:pointer;display:flex;align-items:center;gap:.7rem;padding:.35rem .5rem .35rem 0;color:var(--cream-dim)}
+.rail button:focus-visible{outline:3px solid var(--gold);outline-offset:2px;border-radius:6px}
+.rail .tick{width:14px;height:2px;border-radius:2px;background:rgba(255,244,222,.55);transition:width .35s ease,background .35s ease}
+.rail .nm{font-size:.76rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:0;transform:translateX(-6px);transition:opacity .3s ease,transform .3s ease;white-space:nowrap;text-shadow:0 1px 8px rgba(0,0,0,.6)}
+.rail button:hover .nm{opacity:1;transform:none}
+.rail button[aria-current="true"] .tick{width:34px;background:var(--gold)}
+@media (min-width:1100px){.rail{display:flex}}
+
+.progress{position:fixed;z-index:30;left:0;bottom:0;height:4px;width:100%;background:rgba(255,244,222,.12)}
+.progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--clay),var(--gold))}
+
+/* stops */
+main{position:relative;z-index:10}
+.stop{min-height:100vh;display:flex;align-items:flex-end;justify-content:space-between;gap:2rem;padding:6.5rem var(--gutter) 3.2rem;padding-right:max(16px,env(safe-area-inset-right,0px))}
+.stop.flip{flex-direction:row-reverse}
+@media (min-width:1100px){.stop{padding-left:calc(var(--gutter) + 70px)}.stop.flip{padding-left:calc(var(--gutter) + 70px)}}
+.panel{width:min(31rem,100%);min-width:0;background:var(--glass);backdrop-filter:blur(16px) saturate(1.15);-webkit-backdrop-filter:blur(16px) saturate(1.15);border:1px solid var(--glass-line);border-radius:20px;padding:1.3rem 1.5rem 1.5rem;box-shadow:0 24px 60px rgba(0,0,0,.35);will-change:opacity,transform}
+.panel.big{width:min(36rem,100%)}
+.tag{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;margin:0 0 .85rem;font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.tag b{font-family:var(--f-display);font-size:1.5rem;letter-spacing:-.02em;color:var(--cream);font-weight:800;line-height:1}
+.tag b small{font-size:.8rem;opacity:.55;font-weight:500}
+h1,h2{font-family:var(--f-display);margin:0 0 .6rem;line-height:1.02;letter-spacing:-.025em;text-wrap:balance;font-weight:800}
+h1{font-size:clamp(2.6rem,6.2vw,4.6rem)}
+h1 em{font-style:normal;color:var(--gold)}
+h2{font-size:clamp(1.9rem,3.8vw,2.7rem)}
+.panel p{margin:0 0 .9rem;color:var(--cream-dim);max-width:34em}
+.acts{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.4rem}
+.acts li{background:rgba(255,244,222,.1);border:1px solid rgba(255,244,222,.2);border-radius:999px;padding:.22rem .7rem;font-size:.84rem;font-weight:500}
+.hint{display:inline-flex;align-items:center;gap:.5rem;font-weight:700;font-size:.9rem;margin-top:.3rem;color:var(--gold)}
+.hint b{display:inline-block;animation:nudge 1.6s ease-in-out infinite}
+@keyframes nudge{50%{transform:translateY(5px)}}
+
+/* snapshots */
+.snaps{position:relative;width:min(27rem,38vw);height:min(27rem,60vh);flex:none;pointer-events:none;display:none}
+@media (min-width:900px){.snaps{display:block}}
+.snap{position:absolute;margin:0;background:#fbf3e2;padding:.5rem .5rem 1.7rem;border-radius:4px;box-shadow:0 18px 40px rgba(0,0,0,.45);color:var(--ink);will-change:transform;pointer-events:auto;transition:box-shadow .3s ease;transform:translate3d(0,var(--ty,0px),0) rotate(var(--r,0deg))}
+.snap img{display:block;width:100%;height:auto;border-radius:2px}
+.snap figcaption{position:absolute;left:.55rem;right:.55rem;bottom:.35rem;font-size:.62rem;line-height:1.2;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.snap figcaption a{text-decoration:underline}
+.snap:hover{box-shadow:0 26px 56px rgba(0,0,0,.55)}
+.snap.a{width:62%;left:0;top:4%;--r:-3.5deg}
+.snap.b{width:56%;right:0;bottom:2%;--r:3deg}
+
+/* pins on the photo */
+.pins{position:fixed;inset:0;z-index:20;pointer-events:none}
+.pin{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;opacity:0;transition:opacity .35s ease}
+.pin.on{opacity:1}
+.pin button{all:unset;pointer-events:auto;position:absolute;left:-15px;top:-15px;width:30px;height:30px;border-radius:50%;cursor:pointer;display:grid;place-items:center}
+.pin button::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--cream);box-shadow:0 0 0 3px rgba(26,18,12,.55),0 2px 10px rgba(0,0,0,.5)}
+.pin button::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--cream);animation:ping 2.2s ease-out infinite}
+@keyframes ping{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.6);opacity:0}}
+.pin button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.pin .tip{position:absolute;left:22px;top:-22px;width:max-content;max-width:15rem;background:rgba(22,15,10,.86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--glass-line);border-radius:12px;padding:.5rem .75rem;font-size:.8rem;line-height:1.35;color:var(--cream-dim);opacity:0;transform:translateX(-6px);transition:opacity .25s ease,transform .25s ease;pointer-events:none}
+.pin .tip b{display:block;color:var(--cream);font-family:var(--f-display);font-size:.95rem;margin-bottom:.1rem}
+.pin.flipTip .tip{left:auto;right:22px;transform:translateX(6px)}
+.pin button:hover+.tip,.pin button:focus-visible+.tip,.pin.open .tip{opacity:1;transform:none}
+
+/* planner */
+.plan{display:grid;gap:.85rem;margin-top:.4rem}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+legend{font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:0;margin-bottom:.45rem;color:var(--gold)}
+.chips{display:flex;flex-wrap:wrap;gap:.4rem}
+.chip{font:inherit;font-weight:700;font-size:.88rem;background:rgba(255,244,222,.08);color:var(--cream);border:1px solid rgba(255,244,222,.28);border-radius:999px;padding:.32rem .9rem;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--gold);color:var(--ink);border-color:transparent}
+.result{background:rgba(255,244,222,.08);border:1px dashed rgba(242,177,52,.7);border-radius:12px;padding:.8rem .95rem;font-size:.92rem;color:var(--cream-dim)}
+.result strong{font-family:var(--f-display);font-size:1.1rem;display:block;margin-bottom:.2rem;color:var(--cream)}
+.small{font-size:.76rem;opacity:.7;margin:.8rem 0 0!important}
+
+/* credits */
+.credits{position:relative;z-index:10;padding:2.5rem var(--gutter) 5rem;background:linear-gradient(180deg,rgba(11,13,26,0),rgba(11,13,26,.92) 30%)}
+@media (min-width:1100px){.credits{padding-left:calc(var(--gutter) + 70px)}}
+.credits h3{font-family:var(--f-display);font-size:1.4rem;margin:0 0 .3rem}
+.credits p{margin:0 0 1rem;color:var(--cream-dim);max-width:46rem;font-size:.9rem}
+.credits ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(17rem,1fr));gap:.4rem 1.4rem;font-size:.78rem;color:var(--cream-dim)}
+.credits li{min-width:0;overflow-wrap:anywhere}
+
+@media (max-width:899px){
+  .stop{padding-top:5.5rem;padding-bottom:2.4rem}
+  .clock{display:none}
+  .panel{padding:1.05rem 1.15rem 1.2rem;border-radius:16px}
+}
+@media (max-width:520px){.chip-btn .lbl{display:none}h1{font-size:clamp(2.3rem,12vw,3rem)}}
+@media (prefers-reduced-motion:reduce){.hint b,.loader i::after,.pin button::after{animation:none}}
+</style>
+</head>
+<body>
+<canvas id="stage" aria-hidden="true"></canvas>
+<div class="pins" id="pins"></div>
+<div class="loader" id="loader"><div><b>Village Fun</b><span>Opening the village gate&hellip;</span><i></i></div></div>
+<p class="fallback">Your browser could not start the photo stage, so here is the plain tour. Scroll to read every stop.</p>
+
+<header class="top">
+  <a class="brand" href="#stop-0"><i></i>Village Fun</a>
+  <div class="tools">
+    <span class="clock" id="clock">Morning</span>
+    <button class="chip-btn" id="snd" type="button" aria-pressed="false" title="Turn village sounds on or off"><span aria-hidden="true">&#9835;</span><span class="lbl">Sound</span></button>
+    <a class="chip-btn cta" href="#stop-6"><span class="lbl">Plan your visit</span><span aria-hidden="true">&rarr;</span></a>
+  </div>
+</header>
+<nav class="rail" id="rail" aria-label="Tour stops"></nav>
+<div class="progress" aria-hidden="true"><span id="bar"></span></div>
+
+<main>
+  <section class="stop" id="stop-0">
+    <article class="panel big">
+      <p class="tag"><span>The village gate</span><b>01<small> / 07</small></b></p>
+      <h1>A day of <em>village fun</em> is waiting.</h1>
+      <p>Skip the screens for one long day. Eat at a hosted table, race a bullock cart, row a boat at sunset, and dance around a fire. Scroll to walk in under the welcome arch.</p>
+      <span class="hint"><b>&darr;</b> Scroll to start walking</span>
+    </article>
+    <aside class="snaps" aria-label="More photos of the village road"><figure class="snap a" data-ph="s0a"><img alt="A tree-lined village road in the morning" loading="lazy" src="photos/s0a.jpg"><figcaption></figcaption></figure></aside>
+  </section>
+
+  <section class="stop flip" id="stop-1">
+    <article class="panel">
+      <p class="tag"><span>Early morning</span><b>02<small> / 07</small></b></p>
+      <h2>Chai on a charpai</h2>
+      <p>Your day starts in the clay-walled lane. Sit on a rope bed under a thatched roof, drink wood-fire chai, and eat breakfast cooked by the family who lives here.</p>
+      <ul class="acts"><li>Hosted breakfast</li><li>Well-water pulling</li><li>Clay hut stay</li><li>Cow milking</li></ul>
+    </article>
+    <aside class="snaps" aria-label="More photos of the mud lane"><figure class="snap a" data-ph="s1a"><img alt="A mother and children at the door of a clay house" loading="lazy" src="photos/s1a.jpg"><figcaption></figcaption></figure><figure class="snap b" data-ph="s1b"><img alt="A child playing football in front of a painted house" loading="lazy" src="photos/s1b.jpg"><figcaption></figcaption></figure></aside>
+  </section>
+
+  <section class="stop" id="stop-2">
+    <article class="panel">
+      <p class="tag"><span>Mid morning</span><b>03<small> / 07</small></b></p>
+      <h2>Get your hands golden</h2>
+      <p>Walk into the standing crop and cut your own bundle. Farmers show you each job, and nobody minds if you get it wrong. Whatever you harvest ends up on your lunch plate.</p>
+      <ul class="acts"><li>Hand harvest</li><li>Planting</li><li>Vegetable picking</li><li>Farm lunch</li></ul>
+    </article>
+    <aside class="snaps" aria-label="More photos of the fields"><figure class="snap a" data-ph="s2a"><img alt="Green farm terraces around a small house in the monsoon" loading="lazy" src="photos/s2a.jpg"><figcaption></figcaption></figure><figure class="snap b" data-ph="s2b"><img alt="A flooded paddy field at sunset with young rice" loading="lazy" src="photos/s2b.jpg"><figcaption></figcaption></figure></aside>
+  </section>
+
+  <section class="stop flip" id="stop-3">
+    <article class="panel">
+      <p class="tag"><span>Midday</span><b>04<small> / 07</small></b></p>
+      <h2>The village market</h2>
+      <p>Stalls spill onto the path. Shape a pot on the wheel, taste jaggery sweets, buy vegetables by the heap, and learn to weave a basket from the women who sell them.</p>
+      <ul class="acts"><li>Pottery wheel</li><li>Basket weaving</li><li>Street snacks</li><li>Local crafts</li></ul>
+    </article>
+    <aside class="snaps" aria-label="More photos of the market"><figure class="snap a" data-ph="s3a"><img alt="Women in bright saris shopping at a weekly market" loading="lazy" src="photos/s3a.jpg"><figcaption></figcaption></figure><figure class="snap b" data-ph="s3b"><img alt="Fresh green beans laid out on a cloth" loading="lazy" src="photos/s3b.jpg"><figcaption></figcaption></figure></aside>
+  </section>
+
+  <section class="stop" id="stop-4">
+    <article class="panel">
+      <p class="tag"><span>Afternoon</span><b>05<small> / 07</small></b></p>
+      <h2>Games everyone plays</h2>
+      <p>Dust flies as a bullock-cart race thunders past. Join a kabaddi match, fly a kite from the rooftop, or just cheer from the fence. Teams are mixed, and so are the ages.</p>
+      <ul class="acts"><li>Bullock-cart ride</li><li>Kabaddi</li><li>Kite flying</li><li>Tug of war</li></ul>
+    </article>
+    <aside class="snaps" aria-label="More photos of the games"><figure class="snap a" data-ph="s4a"><img alt="Young men playing a kabaddi style game on open ground" loading="lazy" src="photos/s4a.jpg"><figcaption></figcaption></figure><figure class="snap b" data-ph="s4b"><img alt="Many kites flying over a festival crowd" loading="lazy" src="photos/s4b.jpg"><figcaption></figcaption></figure></aside>
+  </section>
+
+  <section class="stop flip" id="stop-5">
+    <article class="panel">
+      <p class="tag"><span>Golden hour</span><b>06<small> / 07</small></b></p>
+      <h2>Boats at golden hour</h2>
+      <p>Climb into a wooden boat as the light turns gold. Try fishing with a bamboo rod, listen to the boatmen&rsquo;s songs, and finish with a picnic on the sandbank.</p>
+      <ul class="acts"><li>Boat ride</li><li>Bamboo fishing</li><li>Sandbank picnic</li><li>Sunset walk</li></ul>
+    </article>
+    <aside class="snaps" aria-label="More photos of the river"><figure class="snap a" data-ph="s5a"><img alt="The sun setting over a sandbank and a canal" loading="lazy" src="photos/s5a.jpg"><figcaption></figcaption></figure><figure class="snap b" data-ph="s5b"><img alt="Wooden boats resting on a river bank" loading="lazy" src="photos/s5b.jpg"><figcaption></figcaption></figure></aside>
+  </section>
+
+  <section class="stop" id="stop-6">
+    <article class="panel big">
+      <p class="tag"><span>Night</span><b>07<small> / 07</small></b></p>
+      <h2>Dance until the stars come out</h2>
+      <p>Dinner is served under lanterns. Then the drums start, the circle forms around the bonfire, and everyone is pulled in to dance. Plan your own day below.</p>
+      <div class="plan">
+        <fieldset><legend>Who is coming</legend>
+          <div class="chips" data-group="who">
+            <button class="chip" id="who-friends" type="button" data-v="friends" aria-pressed="false">Friends</button>
+            <button class="chip" id="who-family" type="button" data-v="family" aria-pressed="true">Family</button>
+            <button class="chip" id="who-solo" type="button" data-v="solo" aria-pressed="false">Just me</button>
+          </div>
+        </fieldset>
+        <fieldset><legend>How long</legend>
+          <div class="chips" data-group="len">
+            <button class="chip" id="len-day" type="button" data-v="day" aria-pressed="false">Day trip</button>
+            <button class="chip" id="len-night" type="button" data-v="night" aria-pressed="true">One night</button>
+            <button class="chip" id="len-weekend" type="button" data-v="weekend" aria-pressed="false">Weekend</button>
+          </div>
+        </fieldset>
+        <div class="result" id="result" aria-live="polite"></div>
+      </div>
+      <p class="small">This is a concept page. There is no booking behind it yet.</p>
+    </article>
+    <aside class="snaps" aria-label="More photos of the bonfire"><figure class="snap a" data-ph="s6a"><img alt="People gathered around a bonfire on a winter night" loading="lazy" src="photos/s6a.jpg"><figcaption></figcaption></figure></aside>
+  </section>
+</main>
+
+<section class="credits" id="credits">
+  <h3>Photo credits</h3>
+  <p>Every photograph on this page is a real photo from Wikimedia Commons, used under the licence shown. The moving dust, kites, birds and sparks are added by the page.</p>
+  <ul id="creditList"></ul>
+</section>
+
+<script src="lib/three.min.js"></script>
+<script src="tour.js"></script>
+</body>
+</html>
